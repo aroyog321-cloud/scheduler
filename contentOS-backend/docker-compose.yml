@@ -1,0 +1,58 @@
+# docker-compose.yml
+# Run: docker compose up -d
+# Then: npm run dev (API) + npm run worker (background jobs) in separate terminals
+
+version: "3.9"
+
+services:
+  # ─── PostgreSQL ───────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: contentos_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: contentos
+      POSTGRES_PASSWORD: contentos_dev
+      POSTGRES_DB: contentos
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contentos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis (BullMQ job queue) ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: contentos_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── BullMQ Dashboard (optional, comment out if not needed) ───────────
+  bull-board:
+    image: deadly0/bull-board
+    container_name: contentos_bullboard
+    restart: unless-stopped
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "3001:3000"
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+  redis_data:

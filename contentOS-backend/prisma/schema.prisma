@@ -1,0 +1,163 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────
+model User {
+  id              String            @id @default(uuid())
+  email           String            @unique
+  passwordHash    String
+  name            String?
+  timezone        String            @default("UTC")
+  plan            Plan              @default(FREE)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  platformAccounts PlatformAccount[]
+  mediaFiles       MediaFile[]
+  scheduledPosts   ScheduledPost[]
+  mcpApiKeys       McpApiKey[]
+
+  @@map("users")
+}
+
+enum Plan {
+  FREE
+  CREATOR
+  AGENCY
+}
+
+// ─── Platform OAuth Accounts ──────────────────────────────────────────
+model PlatformAccount {
+  id               String    @id @default(uuid())
+  userId           String
+  platform         Platform
+  platformUserId   String           // YouTube channel ID / IG business account ID
+  platformUsername String?
+  accessToken      String           // encrypted at rest
+  refreshToken     String?          // encrypted at rest
+  tokenExpiresAt   DateTime?
+  scopes           String[]
+  isActive         Boolean          @default(true)
+  connectedAt      DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publishedPosts   PostPlatformResult[]
+
+  @@unique([userId, platform, platformUserId])
+  @@map("platform_accounts")
+}
+
+enum Platform {
+  YOUTUBE
+  INSTAGRAM
+  TIKTOK
+  LINKEDIN
+  FACEBOOK
+  TWITTER
+  PINTEREST
+}
+
+// ─── Media Files ──────────────────────────────────────────────────────
+model MediaFile {
+  id          String    @id @default(uuid())
+  userId      String
+  filename    String
+  originalName String
+  mimeType    String
+  sizeBytes   BigInt
+  storageUrl  String           // local path or R2/S3 URL
+  duration    Int?             // seconds (for video)
+  thumbnail   String?
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts       ScheduledPost[]
+
+  @@map("media_files")
+}
+
+// ─── Scheduled Posts ──────────────────────────────────────────────────
+model ScheduledPost {
+  id              String          @id @default(uuid())
+  userId          String
+  mediaFileId     String?
+  title           String
+  caption         String?         @db.Text
+  description     String?         @db.Text   // YouTube long description
+  hashtags        String[]
+  platforms       Platform[]
+  scheduledAt     DateTime
+  timeZone        String          @default("UTC")
+  status          PostStatus      @default(DRAFT)
+  privacyStatus   PrivacyStatus   @default(PUBLIC)
+  jobId           String?         // BullMQ job ID
+  aiGenerated     Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  publishedAt     DateTime?
+  failureReason   String?
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaFile       MediaFile?      @relation(fields: [mediaFileId], references: [id])
+  platformResults PostPlatformResult[]
+
+  @@map("scheduled_posts")
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum PrivacyStatus {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+// ─── Per-platform publish result ──────────────────────────────────────
+model PostPlatformResult {
+  id                String          @id @default(uuid())
+  scheduledPostId   String
+  platformAccountId String
+  platform          Platform
+  status            PostStatus
+  platformPostId    String?         // e.g. YouTube video ID
+  platformUrl       String?
+  errorMessage      String?
+  publishedAt       DateTime?
+
+  scheduledPost     ScheduledPost   @relation(fields: [scheduledPostId], references: [id], onDelete: Cascade)
+  platformAccount   PlatformAccount @relation(fields: [platformAccountId], references: [id])
+
+  @@map("post_platform_results")
+}
+
+// ─── MCP API Keys (for AI agents) ─────────────────────────────────────
+model McpApiKey {
+  id          String    @id @default(uuid())
+  userId      String
+  keyHash     String    @unique
+  label       String
+  scopes      String[]
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mcp_api_keys")
+}
