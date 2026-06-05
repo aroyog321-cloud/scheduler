@@ -72,15 +72,19 @@ router.get("/", requireAuth, async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
+    const where = { userId: req.user.id };
+    if (req.query.folder && req.query.folder !== "All") where.folder = req.query.folder;
+    if (req.query.tag) where.tags = { has: req.query.tag };
+
     const [files, total] = await Promise.all([
       prisma.mediaFile.findMany({
-        where: { userId: req.user.id },
+        where,
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
-        select: { id: true, originalName: true, mimeType: true, sizeBytes: true, storageUrl: true, thumbnail: true, createdAt: true },
+        select: { id: true, originalName: true, mimeType: true, sizeBytes: true, storageUrl: true, thumbnail: true, tags: true, folder: true, createdAt: true },
       }),
-      prisma.mediaFile.count({ where: { userId: req.user.id } }),
+      prisma.mediaFile.count({ where }),
     ]);
 
     res.json({
@@ -108,6 +112,29 @@ router.delete("/:id", requireAuth, async (req, res, next) => {
 
     await prisma.mediaFile.delete({ where: { id: file.id } });
     res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// ─── PATCH /api/media/:id ─────────────────────────────────────────────
+router.patch("/:id", requireAuth, async (req, res, next) => {
+  try {
+    const file = await prisma.mediaFile.findFirst({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    if (!file) return res.status(404).json({ error: "Media file not found" });
+
+    const { originalName, folder, tags } = req.body;
+    const data = {};
+    if (originalName !== undefined) data.originalName = originalName;
+    if (folder !== undefined) data.folder = folder;
+    if (tags !== undefined) data.tags = tags;
+
+    const updated = await prisma.mediaFile.update({
+      where: { id: file.id },
+      data,
+    });
+    
+    res.json({ file: { ...updated, sizeBytes: Number(updated.sizeBytes) } });
   } catch (err) { next(err); }
 });
 

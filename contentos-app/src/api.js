@@ -50,7 +50,8 @@ export const mediaApi = {
       onUploadProgress: onProgress,
     });
   },
-  list: (page = 1) => api.get(`/media?page=${page}&limit=20`),
+  list: (params = { page: 1 }) => api.get(`/media`, { params }),
+  update: (id, data) => api.patch(`/media/${id}`, data),
   delete: (id) => api.delete(`/media/${id}`),
   generateAi: (id) => api.post(`/media/${id}/generate-ai`),
 };
@@ -83,6 +84,7 @@ export const analyticsApi = {
   youtube: (startDate, endDate) => api.get("/analytics/youtube", { params: { startDate, endDate } }),
   instagram: () => api.get("/analytics/instagram"),
   activity: () => api.get("/analytics/activity"),
+  posts: () => api.get("/analytics/posts"),
 };
 
 export default api;

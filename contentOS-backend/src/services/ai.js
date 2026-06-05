@@ -1,5 +1,6 @@
 require("dotenv").config();
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const fs = require("fs");
 const logger = require("../logger");
 
 // Models to try in order (fallback if one hits quota)
@@ -115,6 +116,36 @@ async function generateContentFromMedia(mediaFile) {
   });
 }
 
+// ── Generate tags from image ───────────────────────────────────────────
+async function generateMediaTags(mediaFile) {
+  if (!mediaFile.mimeType?.startsWith("image/")) return [];
+  
+  const filePath = mediaFile.storageUrl?.startsWith("http") ? null : mediaFile.storageUrl;
+  if (!filePath || !fs.existsSync(filePath)) return [];
+
+  const base64Data = fs.readFileSync(filePath).toString("base64");
+  const prompt = `Analyze this image and provide exactly 3 to 5 highly relevant, single-word tags that describe its visual contents, mood, or subject matter. 
+Reply ONLY with valid JSON. No markdown. No explanation:
+{ "tags": ["nature", "laptop", "sunset"] }`;
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return [];
+  
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent([
+      prompt,
+      { inlineData: { data: base64Data, mimeType: mediaFile.mimeType } }
+    ]);
+    const raw = result.response.text().replace(/```json|```/g, "").trim();
+    return JSON.parse(raw).tags || [];
+  } catch (err) {
+    logger.error("Failed to generate media tags: " + err.message);
+    return [];
+  }
+}
+
 // ── Rewrite caption in different style ────────────────────────────────
 async function rewriteCaption({ caption, style = "shorter" }) {
   const STYLES = {
@@ -170,6 +201,7 @@ module.exports = {
   generateContent,
   generateCaptionVariants,
   generateContentFromMedia,
+  generateMediaTags,
   rewriteCaption,
   generateHashtags,
   suggestPostingTimes,

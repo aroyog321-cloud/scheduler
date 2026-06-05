@@ -27,11 +27,12 @@ export default function Login() {
   return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
       <div style={{ width:"100%", maxWidth:400 }}>
-        {/* Logo */}
-        <div style={{ textAlign:"center", marginBottom:36 }}>
-          <div style={{ width:44, height:44, background:"linear-gradient(135deg,#00d4ff,#a78bfa)", borderRadius:12, margin:"0 auto 14px" }} />
-          <h1 style={{ fontSize:24, fontWeight:800, letterSpacing:-0.5 }}>Welcome back</h1>
-          <p style={{ color:"var(--muted2)", fontSize:14, marginTop:6 }}>Sign in to ContentOS</p>
+        <div style={{ textAlign:"center", marginBottom:40 }}>
+          <div style={{ width:80, height:80, background:"transparent", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+            <img src="/logo.png" alt="Flux Logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} onError={(e) => e.target.style.display = 'none'} />
+          </div>
+          <h1 style={{ fontSize:48, fontWeight:900, letterSpacing:-2, color:"var(--text-heading)", marginBottom:8, textTransform: "uppercase" }}>Flux</h1>
+          <p style={{ color:"var(--muted2)", fontSize:16, marginTop:6 }}>Sign in to Flux</p>
         </div>
 
         <form onSubmit={submit} style={{ display:"flex", flexDirection:"column", gap:16 }}>

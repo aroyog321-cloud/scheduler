@@ -2,21 +2,28 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { authApi, scheduleApi } from "../api";
 import { useAuth, useToast } from "../context";
+import { User, Key, Server, AlertTriangle, Copy, Check, Plus, Trash2 } from "lucide-react";
 
 export default function Settings() {
   const { user } = useAuth();
   const toast = useToast();
   const [params] = useSearchParams();
 
+  const [activeTab, setActiveTab] = useState("profile");
+
+  // Profile State
   const [profile, setProfile] = useState({ name: user?.name || "", timezone: user?.timezone || "UTC" });
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // MCP Keys State
   const [mcpKeys, setMcpKeys] = useState([]);
   const [mcpLoading, setMcpLoading] = useState(true);
   const [newKeyLabel, setNewKeyLabel] = useState("AI Agent");
-  const [newKey, setNewKey] = useState(null); // shown once after creation
+  const [newKey, setNewKey] = useState(null);
   const [generatingKey, setGeneratingKey] = useState(false);
+  const [copied, setCopied] = useState(false);
 
+  // Queue State
   const [queueStatus, setQueueStatus] = useState(null);
 
   useEffect(() => {
@@ -44,7 +51,7 @@ export default function Settings() {
   const saveProfile = async () => {
     setSavingProfile(true);
     try {
-      await authApi.me(); // just verify auth
+      await authApi.me(); 
       toast.success("Profile saved");
     } catch { toast.error("Failed to save"); }
     finally { setSavingProfile(false); }
@@ -57,7 +64,7 @@ export default function Settings() {
       const r = await authApi.generateMcpKey(newKeyLabel);
       setNewKey(r.data.key);
       setMcpKeys(k => [...k, { id: r.data.id, label: r.data.label, scopes: r.data.scopes, createdAt: r.data.createdAt }]);
-      toast.success("API key created — save it now!");
+      toast.success("API key created");
     } catch { toast.error("Failed to generate key"); }
     finally { setGeneratingKey(false); }
   };
@@ -71,170 +78,250 @@ export default function Settings() {
     } catch { toast.error("Failed to revoke"); }
   };
 
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("Copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const TIMEZONES = [
     "UTC", "America/New_York", "America/Chicago", "America/Denver",
     "America/Los_Angeles", "Europe/London", "Europe/Paris", "Europe/Berlin",
     "Asia/Kolkata", "Asia/Tokyo", "Asia/Shanghai", "Australia/Sydney",
   ];
 
+  const TABS = [
+    { id: "profile", label: "General Profile", icon: <User size={16} /> },
+    { id: "api", label: "API & Agents", icon: <Key size={16} /> },
+    { id: "queue", label: "Scheduler Queue", icon: <Server size={16} /> },
+    { id: "danger", label: "Advanced", icon: <AlertTriangle size={16} /> },
+  ];
+
   return (
-    <div className="page">
-      <div className="page-header">
+    <div>
+      <div className="page-header" style={{ marginBottom: 40 }}>
         <h1 className="page-title">Settings</h1>
-        <p className="page-subtitle">Manage your account, API keys and queue</p>
+        <p className="page-subtitle">Manage your account, API keys, and system preferences.</p>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 700 }}>
-
-        {/* Profile */}
-        <div className="card">
-          <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>👤 Profile</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="field">
-              <label className="label">Email</label>
-              <input className="input" value={user?.email || ""} disabled style={{ opacity: 0.5 }} />
-            </div>
-            <div className="field">
-              <label className="label">Name</label>
-              <input className="input" value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} placeholder="Your name" />
-            </div>
-            <div className="field">
-              <label className="label">Timezone</label>
-              <select className="select input" value={profile.timezone} onChange={e => setProfile(p => ({ ...p, timezone: e.target.value }))}>
-                {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label className="label">Plan</label>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <span className="badge" style={{ background: "rgba(0,212,255,0.12)", color: "var(--accent)", fontSize: 12 }}>
-                  {user?.plan || "FREE"}
-                </span>
-              </div>
-            </div>
-            <button className="btn btn-primary btn-sm" onClick={saveProfile} disabled={savingProfile} style={{ alignSelf: "flex-start" }}>
-              {savingProfile ? <span className="spinner" /> : "Save Profile"}
+      <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 64, alignItems: "start" }}>
+        
+        {/* Settings Navigation Sidebar */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, position: "sticky", top: 32 }}>
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "10px 16px", borderRadius: "var(--radius-sm)",
+                fontSize: 14, fontWeight: 500, transition: "all 0.15s ease",
+                background: activeTab === t.id ? "var(--surface)" : "transparent",
+                color: activeTab === t.id ? "var(--primary)" : "var(--text-muted)",
+                border: "1px solid",
+                borderColor: activeTab === t.id ? "var(--border-subtle)" : "transparent",
+                boxShadow: activeTab === t.id ? "0 1px 2px rgba(0,0,0,0.02)" : "none",
+                textAlign: "left"
+              }}
+            >
+              {t.icon} {t.label}
             </button>
-          </div>
+          ))}
         </div>
 
-        {/* MCP API Keys */}
-        <div className="card">
-          <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>⚡ MCP API Keys</h3>
-          <p style={{ fontSize: 13, color: "var(--muted2)", marginBottom: 16, lineHeight: 1.6 }}>
-            Generate API keys so AI agents (Claude, Cursor, etc.) can schedule your posts
-            by calling the MCP endpoints at <code style={{ background: "var(--bg3)", padding: "1px 6px", borderRadius: 4, fontSize: 12 }}>/api/mcp/*</code>
-          </p>
-
-          {/* Create new key */}
-          <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-            <input className="input" placeholder="Key label (e.g. Claude Agent)" value={newKeyLabel}
-              onChange={e => setNewKeyLabel(e.target.value)} style={{ flex: 1 }} />
-            <button className="btn btn-primary" onClick={generateKey} disabled={generatingKey} style={{ flexShrink: 0 }}>
-              {generatingKey ? <span className="spinner" /> : "Generate Key"}
-            </button>
-          </div>
-
-          {/* Show new key once */}
-          {newKey && (
-            <div style={{ marginBottom: 16, padding: "12px 14px", background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.25)", borderRadius: 8 }}>
-              <div style={{ fontSize: 12, color: "var(--green)", fontWeight: 600, marginBottom: 8 }}>
-                ✓ Copy this key — it will NOT be shown again
+        {/* Content Area */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 32, maxWidth: 800 }}>
+          
+          {/* PROFILE TAB */}
+          {activeTab === "profile" && (
+            <div style={{ animation: "fadeIn 0.3s ease" }}>
+              <div style={{ marginBottom: 24 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-heading)" }}>Profile Details</h2>
+                <p style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>Update your personal information and timezone.</p>
               </div>
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <code style={{ flex: 1, fontSize: 12, background: "var(--bg3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all", fontFamily: "'Fira Code', monospace" }}>
-                  {newKey}
-                </code>
-                <button className="btn btn-ghost btn-sm" onClick={() => { navigator.clipboard.writeText(newKey); toast.success("Copied!"); }}>
-                  Copy
+
+              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 32, alignItems: "center" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-heading)" }}>Email Address</div>
+                  <input className="input" value={user?.email || ""} disabled style={{ opacity: 0.6, background: "var(--bg)" }} />
+                </div>
+                
+                <div style={{ width: "100%", height: 1, background: "var(--border-subtle)" }} />
+                
+                <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 32, alignItems: "center" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-heading)" }}>Full Name</div>
+                  <input className="input" value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} placeholder="Your name" />
+                </div>
+
+                <div style={{ width: "100%", height: 1, background: "var(--border-subtle)" }} />
+
+                <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 32, alignItems: "center" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-heading)" }}>Timezone</div>
+                  <select className="select input" value={profile.timezone} onChange={e => setProfile(p => ({ ...p, timezone: e.target.value }))}>
+                    {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
+                <button className="btn btn-primary" onClick={saveProfile} disabled={savingProfile}>
+                  {savingProfile ? <span className="spinner" /> : "Save Changes"}
                 </button>
               </div>
             </div>
           )}
 
-          {/* Keys list */}
-          {mcpLoading ? <div className="spinner" /> : (
-            mcpKeys.length === 0 ? (
-              <p style={{ fontSize: 13, color: "var(--muted)", fontStyle: "italic" }}>No API keys yet</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {mcpKeys.map(k => (
-                  <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "var(--bg3)", borderRadius: 8 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{k.label}</div>
-                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                        Created {new Date(k.createdAt).toLocaleDateString()}
-                        {k.lastUsedAt && ` · Last used ${new Date(k.lastUsedAt).toLocaleDateString()}`}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      {k.scopes?.map(s => (
-                        <span key={s} style={{ fontSize: 10, padding: "2px 6px", background: "rgba(0,212,255,0.08)", color: "var(--accent)", borderRadius: 4 }}>{s}</span>
-                      ))}
-                    </div>
-                    <button className="btn btn-danger btn-sm" onClick={() => revokeKey(k.id)}>Revoke</button>
-                  </div>
-                ))}
+          {/* API TAB */}
+          {activeTab === "api" && (
+            <div style={{ animation: "fadeIn 0.3s ease" }}>
+              <div style={{ marginBottom: 24 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-heading)" }}>API & Agents</h2>
+                <p style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>Generate MCP API keys to allow AI agents like Claude to schedule posts on your behalf.</p>
               </div>
-            )
-          )}
 
-          {/* MCP Usage example */}
-          <div style={{ marginTop: 16, padding: "12px 14px", background: "var(--bg3)", borderRadius: 8 }}>
-            <div style={{ fontSize: 12, color: "var(--muted2)", fontWeight: 600, marginBottom: 8 }}>Example: Schedule a post via MCP</div>
-            <pre style={{ fontSize: 11, color: "var(--green)", fontFamily: "'Fira Code', monospace", margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{`POST /api/mcp/create_post
-x-mcp-api-key: mcp_your_key_here
-
-{
-  "title": "My new video",
-  "platforms": ["YOUTUBE", "INSTAGRAM"],
-  "scheduledAt": "2025-06-10T20:00:00Z"
-}`}</pre>
-          </div>
-        </div>
-
-        {/* Queue Status */}
-        <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700 }}>⚙ Scheduler Queue</h3>
-            <button className="btn btn-ghost btn-sm" onClick={loadQueue}>Refresh</button>
-          </div>
-          {!queueStatus ? (
-            <div style={{ fontSize: 13, color: "var(--yellow)" }}>
-              ⚠ Could not reach queue — make sure Redis is running and the worker is started with <code style={{ background: "var(--bg3)", padding: "1px 6px", borderRadius: 4, fontSize: 12 }}>node src/worker.js</code>
-            </div>
-          ) : (
-            <div className="grid-4" style={{ gap: 10 }}>
-              {[
-                { label: "Waiting", val: queueStatus.counts?.waiting, color: "var(--muted2)" },
-                { label: "Active", val: queueStatus.counts?.active, color: "var(--yellow)" },
-                { label: "Delayed", val: queueStatus.counts?.delayed, color: "var(--accent)" },
-                { label: "Failed", val: queueStatus.counts?.failed, color: "var(--red)" },
-              ].map(s => (
-                <div key={s.label} style={{ background: "var(--bg3)", borderRadius: 8, padding: "10px", textAlign: "center" }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.val ?? 0}</div>
-                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{s.label}</div>
+              <div className="card" style={{ marginBottom: 24 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-heading)" }}>Create New Key</div>
                 </div>
-              ))}
+                <div style={{ display: "flex", gap: 12 }}>
+                  <input className="input" placeholder="Key label (e.g., Claude Desktop)" value={newKeyLabel} onChange={e => setNewKeyLabel(e.target.value)} style={{ flex: 1 }} />
+                  <button className="btn btn-secondary" onClick={generateKey} disabled={generatingKey}>
+                    {generatingKey ? <span className="spinner" /> : <><Plus size={16} /> Generate Key</>}
+                  </button>
+                </div>
+                
+                {newKey && (
+                  <div style={{ marginTop: 20, padding: 16, background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "var(--radius-md)" }}>
+                    <div style={{ fontSize: 13, color: "#10B981", fontWeight: 600, marginBottom: 12 }}>
+                      ✓ Copy this key — it will not be shown again
+                    </div>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <code style={{ flex: 1, fontSize: 13, background: "var(--surface)", padding: "10px 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", fontFamily: "monospace", color: "var(--text-heading)" }}>
+                        {newKey}
+                      </code>
+                      <button className="btn btn-primary" onClick={() => copyToClipboard(newKey)}>
+                        {copied ? <Check size={16} /> : <Copy size={16} />} Copy
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg)" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-heading)" }}>Active API Keys</div>
+                </div>
+                
+                {mcpLoading ? (
+                  <div style={{ padding: 40, display: "flex", justifyContent: "center" }}><div className="spinner" /></div>
+                ) : mcpKeys.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
+                    No API keys have been generated yet.
+                  </div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <th style={{ padding: "12px 24px", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Label</th>
+                        <th style={{ padding: "12px 24px", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Created</th>
+                        <th style={{ padding: "12px 24px", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", textAlign: "right" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mcpKeys.map(k => (
+                        <tr key={k.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                          <td style={{ padding: "16px 24px" }}>
+                            <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-heading)" }}>{k.label}</div>
+                            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                              {k.scopes?.map(s => (
+                                <span key={s} style={{ fontSize: 10, padding: "2px 8px", background: "rgba(79, 70, 229, 0.1)", color: "var(--primary)", borderRadius: "var(--radius-full)", fontWeight: 600 }}>{s}</span>
+                              ))}
+                            </div>
+                          </td>
+                          <td style={{ padding: "16px 24px", fontSize: 13, color: "var(--text-muted)" }}>
+                            {new Date(k.createdAt).toLocaleDateString()}
+                          </td>
+                          <td style={{ padding: "16px 24px", textAlign: "right" }}>
+                            <button className="btn btn-ghost" onClick={() => revokeKey(k.id)} style={{ color: "#EF4444" }} title="Revoke">
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           )}
-          <div style={{ marginTop: 14, fontSize: 12, color: "var(--muted)", lineHeight: 1.7 }}>
-            <strong style={{ color: "var(--muted2)" }}>Run the worker:</strong><br />
-            <code style={{ background: "var(--bg3)", padding: "4px 10px", borderRadius: 6, display: "inline-block", marginTop: 4, fontFamily: "'Fira Code', monospace" }}>
-              node src/worker.js
-            </code>
-          </div>
-        </div>
 
-        {/* Danger zone */}
-        <div className="card" style={{ borderColor: "rgba(248,113,113,0.2)" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--red)", marginBottom: 12 }}>⚠ Danger Zone</h3>
-          <p style={{ fontSize: 13, color: "var(--muted2)", marginBottom: 14 }}>
-            Deleting your account will permanently remove all data including posts, media files, and platform connections.
-          </p>
-          <button className="btn btn-danger btn-sm" onClick={() => toast.error("Contact support to delete your account")}>
-            Delete Account
-          </button>
+          {/* QUEUE TAB */}
+          {activeTab === "queue" && (
+            <div style={{ animation: "fadeIn 0.3s ease" }}>
+              <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                <div>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-heading)" }}>Scheduler Queue</h2>
+                  <p style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>Monitor background jobs and scheduled posts.</p>
+                </div>
+                <button className="btn btn-secondary btn-sm" onClick={loadQueue}>Refresh Status</button>
+              </div>
+
+              {!queueStatus ? (
+                <div className="card" style={{ background: "rgba(245, 158, 11, 0.05)", borderColor: "rgba(245, 158, 11, 0.2)" }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <AlertTriangle style={{ color: "#F59E0B" }} size={20} />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#D97706" }}>Scheduler offline</div>
+                      <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
+                        Could not reach the Redis queue. Make sure your worker process is running.
+                      </div>
+                      <code style={{ display: "inline-block", background: "var(--surface)", border: "1px solid var(--border)", padding: "6px 12px", borderRadius: "var(--radius-sm)", marginTop: 12, fontSize: 13, color: "var(--text-heading)", fontFamily: "monospace" }}>
+                        node src/worker.js
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid-4" style={{ gap: 16 }}>
+                  {[
+                    { label: "Waiting", val: queueStatus.counts?.waiting, color: "var(--text-muted)" },
+                    { label: "Active", val: queueStatus.counts?.active, color: "var(--primary)" },
+                    { label: "Delayed", val: queueStatus.counts?.delayed, color: "var(--accent)" },
+                    { label: "Failed", val: queueStatus.counts?.failed, color: "#EF4444" },
+                  ].map(s => (
+                    <div key={s.label} className="card" style={{ padding: 20, textAlign: "center", display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ fontSize: 32, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.val ?? 0}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DANGER TAB */}
+          {activeTab === "danger" && (
+            <div style={{ animation: "fadeIn 0.3s ease" }}>
+              <div style={{ marginBottom: 24 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: "#EF4444" }}>Danger Zone</h2>
+                <p style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>Irreversible account actions.</p>
+              </div>
+
+              <div className="card" style={{ border: "1px solid rgba(239, 68, 68, 0.2)", background: "rgba(239, 68, 68, 0.02)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text-heading)" }}>Delete Account</h3>
+                    <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>Permanently remove all your data, posts, and API keys.</p>
+                  </div>
+                  <button className="btn btn-danger" onClick={() => toast.error("Contact support to delete your account")}>
+                    Delete Account
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

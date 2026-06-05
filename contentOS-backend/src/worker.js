@@ -161,9 +161,24 @@ function startAiGenerateWorker() {
       const mediaFile = await prisma.mediaFile.findUnique({ where: { id: mediaFileId } });
       if (!mediaFile) return;
 
+      // Generate text content
       const generated = await aiService.generateContentFromMedia(mediaFile);
       logger.info(`[AiWorker] Generated content for media ${mediaFileId}`);
-      return generated;
+
+      // Generate tags for images
+      let tags = [];
+      if (mediaFile.mimeType?.startsWith("image/")) {
+        tags = await aiService.generateMediaTags(mediaFile);
+        if (tags.length > 0) {
+          await prisma.mediaFile.update({
+            where: { id: mediaFileId },
+            data: { tags },
+          });
+          logger.info(`[AiWorker] Generated tags for media ${mediaFileId}: ${tags.join(", ")}`);
+        }
+      }
+
+      return { generated, tags };
     },
     { connection: getRedis(), concurrency: 2 }
   );

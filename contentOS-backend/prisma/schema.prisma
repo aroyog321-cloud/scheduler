@@ -77,9 +77,11 @@ model MediaFile {
   storageUrl  String           // local path or R2/S3 URL
   duration    Int?             // seconds (for video)
   thumbnail   String?
-  createdAt   DateTime  @default(now())
+  tags        String[]         @default([])
+  folder      String?          @default("General")
+  createdAt   DateTime         @default(now())
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   posts       ScheduledPost[]
 
   @@map("media_files")
