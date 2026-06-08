@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { mediaApi } from "../api";
 import { useToast } from "../context";
 import { FileText, Play, Image as ImageIcon, Folder, Hash, Search, Trash2, Edit3, X, DownloadCloud } from "lucide-react";
+import ConfirmModal from "../components/ConfirmModal";
 
 export function MediaLibrary() {
   const [files, setFiles] = useState([]);
@@ -14,6 +15,7 @@ export function MediaLibrary() {
   const [selectedTag, setSelectedTag] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFile, setActiveFile] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const fileRef = useRef();
   const toast = useToast();
@@ -44,8 +46,14 @@ export function MediaLibrary() {
     finally { setUploading(false); }
   };
 
-  const del = async (id) => {
-    if (!confirm("Delete this file?")) return;
+  const requestDelete = (file) => {
+    setConfirmDelete(file);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!confirmDelete) return;
+    const id = confirmDelete.id;
+    setConfirmDelete(null);
     try { 
       await mediaApi.delete(id); 
       setFiles(f => f.filter(x => x.id !== id)); 
@@ -277,7 +285,7 @@ export function MediaLibrary() {
             </div>
 
             <div style={{ padding: "20px 24px", borderTop: "1px solid var(--border-subtle)", background: "var(--bg)" }}>
-              <button className="btn btn-danger" style={{ width: "100%", justifyContent: "center" }} onClick={() => del(activeFile.id)}>
+              <button className="btn btn-danger" style={{ width: "100%", justifyContent: "center" }} onClick={() => requestDelete(activeFile)}>
                 <Trash2 size={16} /> Delete File
               </button>
             </div>
@@ -285,6 +293,16 @@ export function MediaLibrary() {
         )}
 
       </div>
+
+      <ConfirmModal 
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete this file?"
+        message={`Are you sure you want to delete "${confirmDelete?.originalName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        isDestructive={true}
+      />
     </div>
   );
 }

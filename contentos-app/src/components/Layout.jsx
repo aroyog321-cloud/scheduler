@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context";
 import { Command } from "cmdk";
-import { LayoutDashboard, PenSquare, Calendar, Layers, Image as ImageIcon, Link as LinkIcon, Settings, LogOut, Search } from "lucide-react";
+import { LayoutDashboard, PenSquare, Calendar, Layers, Image as ImageIcon, Link as LinkIcon, Settings, LogOut, Search, Sparkles } from "lucide-react";
 
 const NAV = [
   { to: "/dashboard",   icon: <LayoutDashboard />,  label: "Dashboard" },
@@ -11,6 +11,7 @@ const NAV = [
   { to: "/posts",       icon: <Layers />,           label: "Posts" },
   { to: "/media",       icon: <ImageIcon />,        label: "Media" },
   { to: "/platforms",   icon: <LinkIcon />,         label: "Platforms" },
+  { to: "/ai-studio",   icon: <Sparkles />,         label: "AI Studio" },
 ];
 
 export default function Layout() {
@@ -36,11 +37,9 @@ export default function Layout() {
     <div className="app-layout">
       {/* ── Top Header ── */}
       <header className="top-header">
-        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-          <div style={{ width:48, height:48, background:"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <img src="/logo.png" alt="Flux Logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} onError={(e) => e.target.style.display = 'none'} />
-          </div>
-          <span style={{ fontSize:28, fontWeight:900, letterSpacing:-1.5, color:"var(--text-heading)", textTransform: "uppercase" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <img src="/logo.png" alt="Flux Logo" style={{ width: 36, height: 36, objectFit: "contain", borderRadius: 8 }} />
+          <span style={{ fontFamily:"var(--font-display)", fontSize:20, fontWeight:800, letterSpacing:"-0.5px", color:"var(--text-heading)" }}>
             Flux
           </span>
         </div>

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { platformApi } from "../api";
 import { useToast } from "../context";
 import { Check, Plus, AlertCircle, Info } from "lucide-react";
+import ConfirmModal from "../components/ConfirmModal";
 
 const PLATFORMS = [
   { key:"YOUTUBE",   label:"YouTube",    icon:"▶",  color:"#FF0000", desc:"Upload and schedule videos, Shorts", available:true },
@@ -19,6 +20,7 @@ export default function Platforms() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(null);
   const [disconnecting, setDisconnecting] = useState(null);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(null);
   const toast = useToast();
   const [params] = useSearchParams();
 
@@ -55,8 +57,14 @@ export default function Platforms() {
     }
   };
 
-  const disconnect = async (account) => {
-    if (!confirm(`Disconnect ${account.platform}? Scheduled posts won't be cancelled.`)) return;
+  const requestDisconnect = (account) => {
+    setConfirmDisconnect(account);
+  };
+
+  const handleDisconnectConfirm = async () => {
+    if (!confirmDisconnect) return;
+    const account = confirmDisconnect;
+    setConfirmDisconnect(null);
     setDisconnecting(account.id);
     try {
       await platformApi.disconnect(account.id);
@@ -151,7 +159,7 @@ export default function Platforms() {
                       </div>
                       <button 
                         className="btn btn-ghost btn-sm" 
-                        onClick={() => disconnect(connected)} 
+                        onClick={() => requestDisconnect(connected)} 
                         disabled={isDisconnecting}
                         style={{ color: "#EF4444", padding: "6px 12px" }}
                       >
@@ -177,6 +185,16 @@ export default function Platforms() {
           })}
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={!!confirmDisconnect}
+        onClose={() => setConfirmDisconnect(null)}
+        onConfirm={handleDisconnectConfirm}
+        title={`Disconnect ${confirmDisconnect?.platform}?`}
+        message="Scheduled posts won't be cancelled. You can reconnect at any time."
+        confirmText="Disconnect"
+        isDestructive={true}
+      />
     </div>
   );
 }

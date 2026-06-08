@@ -179,7 +179,7 @@ export default function CreatePost() {
         </div>
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"minmax(0, 1fr) 420px", gap: 40, alignItems:"start" }}>
+      <div className="create-post-grid">
         
         {/* LEFT COLUMN: Editor Pane */}
         <div style={{ display:"flex", flexDirection:"column", gap: 32 }}>

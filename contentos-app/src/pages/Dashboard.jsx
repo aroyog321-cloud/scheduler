@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { analyticsApi, postApi } from "../api";
 import { PenSquare, Sparkles, ArrowRight, CheckCircle2, Clock, Calendar as CalendarIcon, XCircle } from "lucide-react";
 
-function StatCard({ label, value, index = 0, trend }) {
-  const accents = ["var(--primary)", "var(--accent)", "#059669"];
+function StatCard({ label, value, progress = 0, index = 0, trend }) {
+  const accents = ["var(--accent)", "var(--blue)", "var(--green)"];
   const color = accents[index % accents.length];
   
   return (
@@ -13,13 +13,13 @@ function StatCard({ label, value, index = 0, trend }) {
       <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
         <div style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, color: "var(--text-heading)", lineHeight: 1 }}>{value}</div>
         {trend !== undefined && (
-          <div style={{ fontSize: 13, fontWeight: 600, color: trend > 0 ? "#059669" : "var(--text-muted)" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: trend > 0 ? "var(--green)" : "var(--text-muted)" }}>
             {trend > 0 ? "+" : ""}{trend}%
           </div>
         )}
       </div>
-      <div style={{ width: "100%", height: 3, background: "var(--bg)", borderRadius: 3, overflow: "hidden" }}>
-        <div style={{ width: "70%", height: "100%", background: color, borderRadius: 3 }} />
+      <div style={{ width: "100%", height: 4, background: "var(--bg)", borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ width: `${Math.max(2, Math.min(100, progress))}%`, height: "100%", background: color, borderRadius: 4, transition: "width 1s ease-out" }} />
       </div>
     </div>
   );
@@ -101,9 +101,9 @@ export default function Dashboard() {
         {/* ── Left Column (Main Content) ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 24, gridColumn: "1 / -1" }}>
           <div className="grid-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-            <StatCard label="Published" value={overview?.publishedPosts ?? 0} index={0} />
-            <StatCard label="Scheduled" value={overview?.scheduledPosts ?? 0} index={1} />
-            <StatCard label="Success Rate" value={`${overview?.successRate ?? 0}%`} index={2} />
+            <StatCard label="Published" value={overview?.publishedPosts ?? 0} progress={Math.min(100, (overview?.publishedPosts || 0) * 10)} index={0} />
+            <StatCard label="Scheduled" value={overview?.scheduledPosts ?? 0} progress={Math.min(100, (overview?.scheduledPosts || 0) * 10)} index={1} />
+            <StatCard label="Success Rate" value={`${overview?.successRate ?? 0}%`} progress={overview?.successRate ?? 0} index={2} />
           </div>
         </div>
 
